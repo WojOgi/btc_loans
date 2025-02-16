@@ -1,517 +1,354 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Bitcoin-Backed Loan Simulator</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-      }
-      table,
-      th,
-      td {
-        border: 1px solid #ccc;
-        border-collapse: collapse;
-        padding: 5px;
-      }
-      table {
-        margin-top: 20px;
-        width: 100%;
-      }
-      label {
-        display: block;
-        margin: 10px 0;
-      }
-      .summary-container {
-        display: flex;
-        gap: 20px;
-        margin-top: 20px;
-      }
-      .summary-box {
-        flex: 1;
-      }
-      .highlight {
-        font-weight: bold;
-        color: darkblue;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Bitcoin-Backed Loan Simulator</h1>
-    <form id="loanForm">
-      <label
-        title="This field indicates the total amount of Bitcoin available in your account. It is significant because it determines your overall capital and potential for collateral and interest pool funding. A higher amount provides more flexibility in financing strategies."
-      >
-        Total Bitcoin Available (BTC):
-        <input
-          type="number"
-          step="any"
-          id="totalBitcoinAvailable"
-          value="1"
-          required
-          title="Enter the total amount of Bitcoin available. This value will be used to determine the maximum funds you can leverage and how much remains after collateral is set aside."
-        />
-      </label>
-      <label
-        title="This is the amount of Bitcoin you will use as collateral for the loan. It secures the loan and affects the loan-to-value calculations. Higher collateral may enable a larger loan but reduces your liquid assets."
-      >
-        Bitcoin Collateral (BTC):
-        <input
-          type="number"
-          step="any"
-          id="btcCollateral"
-          value="0.25"
-          required
-          title="Enter the portion of your Bitcoin that will be locked as collateral. This amount is critical for determining the loan amount and the security of the borrowing process."
-        />
-      </label>
-      <label
-        title="The initial Bitcoin price in USD is used to convert your Bitcoin amounts to dollar values. It sets the baseline for all subsequent calculations. Changes in this value will affect the loan and collateral valuations."
-      >
-        Initial Bitcoin Price (USD):
-        <input
-          type="number"
-          step="any"
-          id="initialBtcPrice"
-          value="100000"
-          required
-          title="Enter the starting price of Bitcoin in USD. This price is used to calculate the collateral value and the loan amount."
-        />
-      </label>
-      <label
-        title="This represents the expected annual growth rate (CAGR) for Bitcoin. It projects how Bitcoin's price might increase over time. This parameter influences the simulated monthly price updates and asset valuation growth."
-      >
-        Expected Yearly BTC CAGR (%):
-        <input
-          type="number"
-          step="any"
-          id="btcCAGR"
-          value="25"
-          required
-          title="Enter the expected yearly Compound Annual Growth Rate (CAGR) for Bitcoin. This helps simulate future price growth in the model."
-        />
-      </label>
-      <label
-        title="The duration of the loan, in months, determines the repayment period. It affects how many monthly payments are made and when the principal is due. Longer durations spread the cost over time but may increase overall interest costs."
-      >
-        Loan Duration (months):
-        <input
-          type="number"
-          id="loanDuration"
-          value="12"
-          required
-          title="Enter the loan duration in months. This value determines the number of monthly payments and when the principal repayment is due."
-        />
-      </label>
-      <label
-        title="The annual interest rate for the loan determines the cost of borrowing. It is used to calculate the monthly interest payment. A higher rate increases the total cost over the life of the loan."
-      >
-        Loan Yearly Interest Rate (%):
-        <input
-          type="number"
-          step="any"
-          id="annualInterestRate"
-          value="14"
-          required
-          title="Enter the yearly interest rate for the loan. This rate is used to compute the monthly interest payments."
-        />
-      </label>
-      <label
-        title="The Loan-to-Value (LTV) ratio defines the percentage of your collateral’s value that can be borrowed. It directly impacts the loan amount. A lower LTV means more collateral is required relative to the loan, providing more security."
-      >
-        Loan-to-Value Ratio (%):
-        <input
-          type="number"
-          step="any"
-          id="LTV"
-          value="50"
-          required
-          title="Enter the LTV ratio, which determines the portion of your collateral’s value that is eligible for borrowing."
-        />
-      </label>
-      <label
-        title="If enabled, the monthly interest payments will be deducted from your remaining Bitcoin pool. This simulates financing interest costs from your asset holdings instead of paying externally. It affects your overall Bitcoin balance used in the simulation."
-      >
-        <input type="checkbox" id="payInterestFromPool" checked />
-        Pay monthly interest from remaining Bitcoin pool
-      </label>
-      <button type="submit">Simulate Loan</button>
-    </form>
+<head>
+  <meta charset="UTF-8">
+  <title>Bitcoin-Backed Loan Simulator</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table, th, td { border: 1px solid #ccc; border-collapse: collapse; padding: 5px; }
+    table { margin-top: 20px; width: 100%; }
+    label { display: block; margin: 10px 0; }
+    .summary-container { display: flex; gap: 20px; margin-top: 20px; }
+    .summary-box { flex: 1; }
+    .highlight { font-weight: bold; color: darkblue; }
+  </style>
+</head>
+<body>
+  <h1>Bitcoin-Backed Loan Simulator</h1>
+  <form id="loanForm">
+    <label title="This field indicates the total amount of Bitcoin available in your account. It is significant because it determines your overall capital and potential for collateral and interest pool funding. A higher amount provides more flexibility in financing strategies.">
+      Total Bitcoin Available (BTC):
+      <input type="number" step="any" id="totalBitcoinAvailable" value="1" required
+             title="Enter the total amount of Bitcoin available. This value is used to determine your maximum funds and post-collateral availability." />
+    </label>
+    <label title="This is the amount of Bitcoin you will use as collateral for the loan. It secures the loan and affects the loan-to-value calculations. Higher collateral may enable a larger loan but reduces your liquid assets.">
+      Bitcoin Collateral (BTC):
+      <input type="number" step="any" id="btcCollateral" value="0.25" required
+             title="Enter the portion of your Bitcoin that will be locked as collateral. This value determines the security of your loan." />
+    </label>
+    <label title="The initial Bitcoin price in USD is used to convert your Bitcoin amounts to dollar values. It sets the baseline for all subsequent calculations. Changes in this value will affect the loan and collateral valuations.">
+      Initial Bitcoin Price (USD):
+      <input type="number" step="any" id="initialBtcPrice" value="100000" required
+             title="Enter the starting price of Bitcoin in USD. This value is crucial for calculating collateral and loan amounts." />
+    </label>
+    <label title="This represents the expected annual growth rate (CAGR) for Bitcoin. It projects how Bitcoin's price might increase over time and influences the simulated monthly price updates.">
+      Expected Yearly BTC CAGR (%):
+      <input type="number" step="any" id="btcCAGR" value="25" required
+             title="Enter the expected yearly Compound Annual Growth Rate for Bitcoin. This parameter models future price growth." />
+    </label>
+    <label title="The duration of the loan, in months, determines the repayment period. It affects the number of monthly payments and when the principal is due. Longer durations may spread out costs but may also increase overall interest costs.">
+      Loan Duration (months):
+      <input type="number" id="loanDuration" value="12" required
+             title="Enter the loan duration in months. This determines how many monthly payments are made and when the final principal repayment occurs." />
+    </label>
+    <label title="The annual interest rate for the loan determines the cost of borrowing. It is used to calculate the monthly interest payment, with higher rates increasing the overall cost.">
+      Loan Yearly Interest Rate (%):
+      <input type="number" step="any" id="annualInterestRate" value="14" required
+             title="Enter the annual interest rate for the loan. This rate is applied to compute the monthly interest payment." />
+    </label>
+    <label title="The Loan-to-Value (LTV) ratio defines the percentage of your collateral’s value that can be borrowed. It directly impacts the loan amount and overall risk. Lower LTVs require more collateral relative to the loan size.">
+      Loan-to-Value Ratio (%):
+      <input type="number" step="any" id="LTV" value="50" required
+             title="Enter the LTV ratio, which determines how much of your collateral’s value is available for borrowing." />
+    </label>
+    <label title="If enabled, the monthly interest payments will be deducted from your remaining Bitcoin pool, reducing your available assets over time. This simulates financing interest from your own holdings.">
+      <input type="checkbox" id="payInterestFromPool" checked>
+      Pay monthly interest from remaining Bitcoin pool
+    </label>
+    <label title="If enabled, the principal due at the end of the loan term will be paid using the remaining Bitcoin pool. If disabled, the principal payment is assumed to be financed externally.">
+      <input type="checkbox" id="payPrincipalFromPool" checked>
+      Pay Principal Due from remaining Bitcoin pool
+    </label>
+    <button type="submit">Simulate Loan</button>
+  </form>
 
-    <div id="results"></div>
+  <div id="results"></div>
 
-    <script>
-      document
-        .getElementById("loanForm")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
+  <script>
+    document.getElementById('loanForm').addEventListener('submit', function(e) {
+      e.preventDefault();
 
-          // Retrieve and parse input values.
-          const totalBitcoinAvailable = parseFloat(
-            document.getElementById("totalBitcoinAvailable").value
-          );
-          const btcCollateral = parseFloat(
-            document.getElementById("btcCollateral").value
-          );
-          const initialBtcPrice = parseFloat(
-            document.getElementById("initialBtcPrice").value
-          );
-          const btcCAGR =
-            parseFloat(document.getElementById("btcCAGR").value) / 100;
-          const loanDuration = parseInt(
-            document.getElementById("loanDuration").value,
-            10
-          );
-          const annualInterestRate =
-            parseFloat(document.getElementById("annualInterestRate").value) /
-            100;
-          const LTV = parseFloat(document.getElementById("LTV").value) / 100;
-          const payInterestFromPool = document.getElementById(
-            "payInterestFromPool"
-          ).checked;
+      // Retrieve and parse input values.
+      const totalBitcoinAvailable = parseFloat(document.getElementById('totalBitcoinAvailable').value);
+      const btcCollateral = parseFloat(document.getElementById('btcCollateral').value);
+      const initialBtcPrice = parseFloat(document.getElementById('initialBtcPrice').value);
+      const btcCAGR = parseFloat(document.getElementById('btcCAGR').value) / 100;
+      const loanDuration = parseInt(document.getElementById('loanDuration').value, 10);
+      const annualInterestRate = parseFloat(document.getElementById('annualInterestRate').value) / 100;
+      const LTV = parseFloat(document.getElementById('LTV').value) / 100;
+      const payInterestFromPool = document.getElementById('payInterestFromPool').checked;
+      const payPrincipalFromPool = document.getElementById('payPrincipalFromPool').checked;
 
-          if (totalBitcoinAvailable < btcCollateral) {
-            alert(
-              "Total Bitcoin Available must be greater than or equal to the Bitcoin Collateral."
-            );
-            return;
+      if (totalBitcoinAvailable < btcCollateral) {
+        alert("Total Bitcoin Available must be greater than or equal to the Bitcoin Collateral.");
+        return;
+      }
+
+      // Calculate collateral value and borrowed amount.
+      const collateralValue = btcCollateral * initialBtcPrice;
+      const borrowedAmount = collateralValue * LTV;
+
+      // Calculate monthly interest payment (USD).
+      const monthlyInterestRate = annualInterestRate / 12;
+      const monthlyInterestPayment = borrowedAmount * monthlyInterestRate;
+
+      // Monthly principal portion if financed monthly.
+      const monthlyPrincipalUSDAmount = borrowedAmount / loanDuration;
+
+      // Determine the monthly BTC growth rate.
+      const monthlyGrowthRate = Math.pow(1 + btcCAGR, 1/12) - 1;
+
+      // Initialize the interest pool: BTC available for funding interest and (possibly) principal.
+      let interestPool = totalBitcoinAvailable - btcCollateral;
+
+      // Build the monthly schedule.
+      const schedule = [];
+      let currentBtcPrice = initialBtcPrice;
+      let totalInterestBTCsold = 0;
+      let finalBtcPrice = currentBtcPrice;
+      let principalDueBTC_final = 0;
+      
+      // Array for hypothetical BTC sold for principal financing each month.
+      const monthlyPrincipalBTCArray = [];
+
+      for (let month = 1; month <= loanDuration; month++) {
+        const monthlyBTCPrice = currentBtcPrice;
+        const collateralValueAtMonth = btcCollateral * monthlyBTCPrice;
+        
+        // Calculate BTC needed to cover this month's interest.
+        let interestBTCsold = 0;
+        if (payInterestFromPool) {
+          interestBTCsold = monthlyInterestPayment / monthlyBTCPrice;
+          totalInterestBTCsold += interestBTCsold;
+          interestPool -= interestBTCsold;
+        }
+        
+        // Hypothetical BTC sold for financing monthly principal.
+        const principalFinancingBTC = monthlyPrincipalUSDAmount / monthlyBTCPrice;
+        monthlyPrincipalBTCArray.push(principalFinancingBTC);
+        
+        let principalDue = 0;
+        let principalDueBTC = 0;
+        let principalDueMonthly = 0;
+        if (month === loanDuration) {
+          // In the final month, the full principal (in USD) is due.
+          principalDue = borrowedAmount;
+          principalDueMonthly = borrowedAmount / loanDuration;
+          principalDueBTC = borrowedAmount / monthlyBTCPrice;
+          // Only deduct principal BTC if payment is from the pool.
+          if (payPrincipalFromPool) {
+            interestPool -= principalDueBTC;
           }
+          finalBtcPrice = monthlyBTCPrice;
+          principalDueBTC_final = principalDueBTC;
+        }
+        
+        schedule.push({
+          month: month,
+          btcPrice: monthlyBTCPrice,
+          collateralValue: collateralValueAtMonth,
+          interestPayment: monthlyInterestPayment,
+          interestBTCsold: interestBTCsold,
+          principalDue: principalDue,
+          principalDueBTC: principalDueBTC,
+          principalDueMonthly: principalDueMonthly,
+          principalFinancingBTC: principalFinancingBTC // Hypothetical BTC sold for principal financing.
+        });
+        
+        // Update BTC price for next month.
+        currentBtcPrice *= (1 + monthlyGrowthRate);
+      }
 
-          // Calculate collateral value and borrowed amount.
-          const collateralValue = btcCollateral * initialBtcPrice;
-          const borrowedAmount = collateralValue * LTV;
+      // When the loan is repaid, the collateral returns to the pool.
+      const collateralReturned = btcCollateral;
+      const finalTotalBTCinPool = interestPool + collateralReturned;
 
-          // Calculate monthly interest payment (USD).
-          const monthlyInterestRate = annualInterestRate / 12;
-          const monthlyInterestPayment = borrowedAmount * monthlyInterestRate;
+      // Calculate the USD value of the remaining BTC in the pool.
+      const remainingPoolValueUSD = finalTotalBTCinPool * finalBtcPrice;
 
-          // Monthly principal portion if financed monthly.
-          const monthlyPrincipalUSDAmount = borrowedAmount / loanDuration;
+      // Calculate initial total value of Bitcoin available (USD).
+      const initialTotalValueUSD = totalBitcoinAvailable * initialBtcPrice;
+      // Calculate percentage gain in value of the Bitcoin held.
+      const percentGain = ((remainingPoolValueUSD / initialTotalValueUSD) - 1) * 100;
+      
+      // Calculate percentage of Bitcoin used as collateral.
+      const collateralPercentage = (btcCollateral / totalBitcoinAvailable) * 100;
+      
+      // Calculate total BTC that would have to be sold for monthly principal financing.
+      const totalBTCForPrincipalFinancing = monthlyPrincipalBTCArray.reduce((sum, val) => sum + val, 0);
+      const averageBTCForPrincipalFinancing = totalBTCForPrincipalFinancing / loanDuration;
+      
+      // Calculate BTC remaining if financing principal by sale:
+      const totalBTCRemainingIfFinancedBySale = totalBitcoinAvailable - totalBTCForPrincipalFinancing;
+      const totalRemainingValueIfFinancedBySale = totalBTCRemainingIfFinancedBySale * finalBtcPrice;
 
-          // Determine the monthly BTC growth rate.
-          const monthlyGrowthRate = Math.pow(1 + btcCAGR, 1 / 12) - 1;
-
-          // Initialize the interest pool: BTC available for funding interest and later principal.
-          let interestPool = totalBitcoinAvailable - btcCollateral;
-
-          // Build the monthly schedule.
-          const schedule = [];
-          let currentBtcPrice = initialBtcPrice;
-          let totalInterestBTCsold = 0;
-          let finalBtcPrice = currentBtcPrice;
-          let principalDueBTC_final = 0;
-
-          // Array for hypothetical BTC sold for principal financing each month.
-          const monthlyPrincipalBTCArray = [];
-
-          for (let month = 1; month <= loanDuration; month++) {
-            const monthlyBTCPrice = currentBtcPrice;
-            const collateralValueAtMonth = btcCollateral * monthlyBTCPrice;
-
-            // Calculate BTC needed to cover this month's interest.
-            let interestBTCsold = 0;
-            if (payInterestFromPool) {
-              interestBTCsold = monthlyInterestPayment / monthlyBTCPrice;
-              totalInterestBTCsold += interestBTCsold;
-              interestPool -= interestBTCsold;
-            }
-
-            // Hypothetical BTC sold for financing monthly principal.
-            const principalFinancingBTC =
-              monthlyPrincipalUSDAmount / monthlyBTCPrice;
-            monthlyPrincipalBTCArray.push(principalFinancingBTC);
-
-            let principalDue = 0;
-            let principalDueBTC = 0;
-            let principalDueMonthly = 0;
-            if (month === loanDuration) {
-              // In the final month, the full principal (in USD) is due.
-              principalDue = borrowedAmount;
-              principalDueMonthly = borrowedAmount / loanDuration;
-              principalDueBTC = borrowedAmount / monthlyBTCPrice;
-              interestPool -= principalDueBTC;
-              finalBtcPrice = monthlyBTCPrice;
-              principalDueBTC_final = principalDueBTC;
-            }
-
-            schedule.push({
-              month: month,
-              btcPrice: monthlyBTCPrice,
-              collateralValue: collateralValueAtMonth,
-              interestPayment: monthlyInterestPayment,
-              interestBTCsold: interestBTCsold,
-              principalDue: principalDue,
-              principalDueBTC: principalDueBTC,
-              principalDueMonthly: principalDueMonthly,
-              principalFinancingBTC: principalFinancingBTC, // Hypothetical BTC sold for principal financing.
-            });
-
-            // Update BTC price for next month.
-            currentBtcPrice *= 1 + monthlyGrowthRate;
-          }
-
-          // When the loan is repaid, the collateral returns to the pool.
-          const collateralReturned = btcCollateral;
-          const finalTotalBTCinPool = interestPool + collateralReturned;
-
-          // Calculate the USD value of the remaining BTC in the pool.
-          const remainingPoolValueUSD = finalTotalBTCinPool * finalBtcPrice;
-
-          // Calculate initial total value of Bitcoin available (USD).
-          const initialTotalValueUSD = totalBitcoinAvailable * initialBtcPrice;
-          // Calculate percentage gain in value of the Bitcoin held.
-          const percentGain =
-            (remainingPoolValueUSD / initialTotalValueUSD - 1) * 100;
-
-          // Calculate percentage of Bitcoin used as collateral.
-          const collateralPercentage =
-            (btcCollateral / totalBitcoinAvailable) * 100;
-
-          // Calculate total BTC that would have to be sold for monthly principal financing.
-          const totalBTCForPrincipalFinancing = monthlyPrincipalBTCArray.reduce(
-            (sum, val) => sum + val,
-            0
-          );
-          const averageBTCForPrincipalFinancing =
-            totalBTCForPrincipalFinancing / loanDuration;
-
-          // Calculate BTC remaining if financing principal by sale:
-          const totalBTCRemainingIfFinancedBySale =
-            totalBitcoinAvailable - totalBTCForPrincipalFinancing;
-          const totalRemainingValueIfFinancedBySale =
-            totalBTCRemainingIfFinancedBySale * finalBtcPrice;
-
-          // Prepare the monthly schedule table HTML with tooltips in the headers.
-          let scheduleHTML = `<h2>Monthly Schedule</h2>
+      // Prepare the monthly schedule table HTML with tooltips.
+      let scheduleHTML = `<h2>Monthly Schedule</h2>
                           <table>
                            <thead>
                              <tr>
-                               <th title="Month number of the loan period. Each month updates the simulated values.">Month</th>
-                               <th title="Simulated Bitcoin price in USD for the month, based on the expected growth rate.">BTC Price (USD)</th>
-                               <th title="USD value of your locked collateral at the current Bitcoin price.">Collateral Value (USD)</th>
-                               <th title="Monthly interest payment in USD, based on the borrowed amount and interest rate.">Interest Payment (USD)</th>
-                               <th title="Amount of BTC sold from the interest pool to cover this month's interest.">BTC Sold for Interest</th>
-                               <th title="Total principal due in USD at the end, with a monthly breakdown.">Principal Due (USD)</th>
-                               <th title="Amount of BTC that will be sold at final repayment to cover the principal.">BTC Sold for Principal (Final Repayment)</th>
-                               <th title="Hypothetical amount of BTC that would be sold each month to finance the monthly principal portion.">Hypothetical BTC Sold for Principal Financing</th>
+                               <th title="Month number in the loan period.">Month</th>
+                               <th title="Simulated BTC price (USD) for the month.">BTC Price (USD)</th>
+                               <th title="USD value of your collateral at the current BTC price.">Collateral Value (USD)</th>
+                               <th title="Monthly interest payment in USD.">Interest Payment (USD)</th>
+                               <th title="Amount of BTC deducted to cover monthly interest.">BTC Sold for Interest</th>
+                               <th title="Total principal due (only in final month) with monthly breakdown.">Principal Due (USD)</th>
+                               <th title="Amount of BTC used to repay principal in the final month.">BTC Sold for Principal (Final Repayment)</th>
+                               <th title="Hypothetical BTC sold each month to finance the monthly principal portion.">Hypothetical BTC Sold for Principal Financing</th>
                              </tr>
                            </thead>
                            <tbody>`;
-          schedule.forEach((entry) => {
-            let principalDueDisplay = "-";
-            if (entry.principalDue > 0) {
-              principalDueDisplay = `${entry.principalDue.toFixed(
-                2
-              )} USD (${loanDuration} x ${entry.principalDueMonthly.toFixed(
-                2
-              )} USD)`;
-            }
-            scheduleHTML += `<tr>
-                          <td title="Represents the month number in the loan term.">${
-                            entry.month
-                          }</td>
-                          <td title="Simulated BTC price in USD for this month.">${entry.btcPrice.toFixed(
-                            2
-                          )}</td>
-                          <td title="Calculated collateral value at the current BTC price.">${entry.collateralValue.toFixed(
-                            2
-                          )}</td>
-                          <td title="Monthly interest payment amount in USD.">${entry.interestPayment.toFixed(
-                            2
-                          )}</td>
-                          <td title="Amount of BTC deducted from the interest pool to cover interest.">${entry.interestBTCsold.toFixed(
-                            6
-                          )}</td>
-                          <td title="The principal due in USD (only in the final month, with breakdown).">${principalDueDisplay}</td>
-                          <td title="Amount of BTC that will be sold in the final month to repay the principal.">${
-                            entry.principalDueBTC
-                              ? entry.principalDueBTC.toFixed(6)
-                              : "-"
-                          }</td>
-                          <td title="Hypothetical BTC sold for financing the monthly principal portion.">${entry.principalFinancingBTC.toFixed(
-                            6
-                          )}</td>
+      schedule.forEach(entry => {
+        let principalDueDisplay = '-';
+        if (entry.principalDue > 0) {
+          principalDueDisplay = `${entry.principalDue.toFixed(2)} USD (${loanDuration} x ${entry.principalDueMonthly.toFixed(2)} USD)`;
+        }
+        scheduleHTML += `<tr>
+                          <td title="Month ${entry.month} of the loan term.">${entry.month}</td>
+                          <td title="Simulated BTC price for this month.">${entry.btcPrice.toFixed(2)}</td>
+                          <td title="Collateral value computed at the current BTC price.">${entry.collateralValue.toFixed(2)}</td>
+                          <td title="Interest payment amount for this month.">${entry.interestPayment.toFixed(2)}</td>
+                          <td title="BTC sold from the interest pool for interest payment.">${entry.interestBTCsold.toFixed(6)}</td>
+                          <td title="Principal due in USD, only applicable in final month.">${principalDueDisplay}</td>
+                          <td title="BTC sold in final month to cover principal repayment.">${entry.principalDueBTC ? entry.principalDueBTC.toFixed(6) : '-'}</td>
+                          <td title="Hypothetical amount of BTC sold this month to finance the principal portion.">${entry.principalFinancingBTC.toFixed(6)}</td>
                         </tr>`;
-          });
-          scheduleHTML += `</tbody></table>`;
+      });
+      scheduleHTML += `</tbody></table>`;
 
-          // Prepare the first summary table (general loan summary) with tooltips.
-          let summaryHTML = `<h2>Loan Summary</h2>
+      // Prepare the first summary table (general loan summary) with tooltips.
+      let summaryHTML = `<h2>Loan Summary</h2>
                          <table>
                            <tbody>
                              <tr>
-                               <td title="Total Bitcoin available in your account.">${"Total Bitcoin Available (BTC)"}</td>
-                               <td title="This is the overall BTC you start with.">${totalBitcoinAvailable.toFixed(
-                                 6
-                               )}</td>
+                               <td title="Total Bitcoin available in your account.">Total Bitcoin Available (BTC)</td>
+                               <td title="Overall BTC you start with.">${totalBitcoinAvailable.toFixed(6)}</td>
                              </tr>
                              <tr>
                                <td title="USD value of your total Bitcoin at the initial price.">Total Value of Bitcoin Available Initially (USD)</td>
-                               <td title="Determines your initial asset value.">${initialTotalValueUSD.toFixed(
-                                 2
-                               )}</td>
+                               <td title="This is your initial asset value.">${initialTotalValueUSD.toFixed(2)}</td>
                              </tr>
                              <tr>
-                               <td title="The amount of BTC locked as collateral.">Collateral (BTC)</td>
-                               <td title="Secures your loan.">${btcCollateral.toFixed(
-                                 6
-                               )}</td>
+                               <td title="Amount of BTC locked as collateral.">Collateral (BTC)</td>
+                               <td title="This secures your loan.">${btcCollateral.toFixed(6)}</td>
                              </tr>
                              <tr>
-                               <td title="Percentage of your total BTC that is used as collateral.">Percentage of BTC used as Collateral</td>
-                               <td title="Shows how much of your assets are tied up.">${collateralPercentage.toFixed(
-                                 2
-                               )}%</td>
+                               <td title="Percentage of your total BTC used as collateral.">Percentage of BTC used as Collateral</td>
+                               <td title="Indicates the proportion of your assets that are tied up.">${collateralPercentage.toFixed(2)}%</td>
                              </tr>
                              <tr>
-                               <td title="BTC remaining after setting aside collateral.">Initial Interest Pool (BTC)</td>
-                               <td title="This pool is used for covering interest payments.">${(
-                                 totalBitcoinAvailable - btcCollateral
-                               ).toFixed(6)}</td>
+                               <td title="BTC remaining after collateral is set aside.">Initial Interest Pool (BTC)</td>
+                               <td title="This pool is used for covering interest payments.">${(totalBitcoinAvailable - btcCollateral).toFixed(6)}</td>
                              </tr>
                              <tr>
-                               <td title="The loan amount in USD based on your collateral value and LTV.">Borrowed Amount (USD)</td>
-                               <td title="This is the amount you receive.">${borrowedAmount.toFixed(
-                                 2
-                               )}</td>
+                               <td title="Loan amount in USD based on your collateral value and LTV.">Borrowed Amount (USD)</td>
+                               <td title="This is the amount you receive.">${borrowedAmount.toFixed(2)}</td>
                              </tr>
                              <tr>
                                <td title="Monthly interest payment in USD.">Monthly Interest Payment (USD)</td>
-                               <td title="The cost of borrowing per month.">${monthlyInterestPayment.toFixed(
-                                 2
-                               )}</td>
+                               <td title="The cost of borrowing per month.">${monthlyInterestPayment.toFixed(2)}</td>
                              </tr>
                              <tr>
-                               <td title="Indicates whether monthly interest is paid from the BTC pool.">Interest Paid from BTC Pool?</td>
-                               <td title="This choice affects your available BTC balance.">${
-                                 payInterestFromPool ? "Yes" : "No"
-                               }</td>
+                               <td title="Specifies if monthly interest is paid using your BTC pool.">Interest Paid from BTC Pool?</td>
+                               <td title="This option affects your available BTC balance.">${payInterestFromPool ? "Yes" : "No"}</td>
                              </tr>
                              <tr>
-                               <td title="Total interest paid over the entire loan term in USD.">Total Interest Paid (USD)</td>
-                               <td title="The cumulative cost of interest.">${(
-                                 monthlyInterestPayment * loanDuration
-                               ).toFixed(2)}</td>
+                               <td title="Total interest paid over the loan term in USD.">Total Interest Paid (USD)</td>
+                               <td title="Cumulative interest cost.">${(monthlyInterestPayment * loanDuration).toFixed(2)}</td>
                              </tr>
                              <tr>
-                               <td title="Total BTC deducted from the pool to pay interest.">Total BTC Sold for Interest</td>
-                               <td title="Reflects the impact of financing interest from your BTC holdings.">${totalInterestBTCsold.toFixed(
-                                 6
-                               )}</td>
+                               <td title="Total BTC deducted from the pool for interest payments.">Total BTC Sold for Interest</td>
+                               <td title="Reflects the impact of financing interest from your BTC holdings.">${totalInterestBTCsold.toFixed(6)}</td>
                              </tr>
                              <tr>
-                               <td title="BTC sold at the final month to cover the principal repayment.">BTC Sold for Principal (Final Month)</td>
-                               <td title="This conversion determines your final repayment cost.">${principalDueBTC_final.toFixed(
-                                 6
-                               )}</td>
+                               <td title="BTC sold in the final month to repay the principal.">BTC Sold for Principal (Final Month)</td>
+                               <td title="This conversion determines your final repayment cost.">${principalDueBTC_final.toFixed(6)}</td>
                              </tr>
                              <tr>
-                               <td title="BTC remaining in the interest pool before the collateral is returned.">Remaining BTC in Interest Pool (Before Collateral Return)</td>
-                               <td title="Indicates available assets before the loan closure.">${interestPool.toFixed(
-                                 6
-                               )}</td>
+                               <td title="BTC remaining in the interest pool before collateral return.">Remaining BTC in Interest Pool (Before Collateral Return)</td>
+                               <td title="Available assets prior to loan closure.">${interestPool.toFixed(6)}</td>
                              </tr>
                              <tr>
-                               <td title="Collateral returned to your account after loan repayment.">Collateral Returned (BTC)</td>
-                               <td title="This amount is added back to your available assets.">${collateralReturned.toFixed(
-                                 6
-                               )}</td>
+                               <td title="Collateral returned after the loan is repaid.">Collateral Returned (BTC)</td>
+                               <td title="This amount is added back to your available assets.">${collateralReturned.toFixed(6)}</td>
                              </tr>
                              <tr>
-                               <td title="This is the final amount of BTC in your account after the loan is repaid and collateral is returned." class="highlight">
+                               <td title="Final amount of BTC in your account after loan closure and collateral return." class="highlight">
                                  Final Total BTC in Pool (After Collateral Return)
                                </td>
-                               <td title="Represents your net asset position after all deductions.">${finalTotalBTCinPool.toFixed(
-                                 6
-                               )}</td>
+                               <td title="Represents your net asset position after all deductions." class="highlight">
+                                 ${finalTotalBTCinPool.toFixed(6)}
+                               </td>
                              </tr>
                              <tr>
                                <td title="USD value of the remaining BTC in your pool after loan closure.">Value of Remaining BTC in Pool (USD)</td>
-                               <td title="This shows the dollar value of your final BTC holdings.">${remainingPoolValueUSD.toFixed(
-                                 2
-                               )}</td>
+                               <td title="The dollar value of your final BTC holdings.">${remainingPoolValueUSD.toFixed(2)}</td>
                              </tr>
                              <tr>
-                               <td title="The simulated final price of BTC at the end of the loan term.">Final BTC Price (USD)</td>
-                               <td title="A key factor in all final calculations.">${finalBtcPrice.toFixed(
-                                 2
-                               )}</td>
+                               <td title="Simulated final price of BTC at the end of the loan term.">Final BTC Price (USD)</td>
+                               <td title="A key factor in the final calculations.">${finalBtcPrice.toFixed(2)}</td>
                              </tr>
                              <tr>
                                <td title="USD value of your collateral at the final BTC price.">Final Collateral Value (USD)</td>
-                               <td title="Indicates the final worth of your locked assets.">${(
-                                 btcCollateral * finalBtcPrice
-                               ).toFixed(2)}</td>
+                               <td title="Indicates the final worth of your locked assets.">${(btcCollateral * finalBtcPrice).toFixed(2)}</td>
                              </tr>
                              <tr>
                                <td title="Percentage gain in value of your BTC from start to finish.">% Gain in Value of Bitcoin Held</td>
-                               <td title="A measure of asset appreciation over the loan period.">${percentGain.toFixed(
-                                 2
-                               )}%</td>
+                               <td title="Measures asset appreciation over the loan period.">${percentGain.toFixed(2)}%</td>
+                             </tr>
+                             <tr>
+                               <td title="Indicates if the principal due was paid using the BTC pool.">Principal Paid from BTC Pool?</td>
+                               <td title="This option affects your final BTC balance.">${payPrincipalFromPool ? "Yes" : "No"}</td>
                              </tr>
                            </tbody>
                          </table>`;
 
-          // Prepare the second summary table (hypothetical principal financing) with tooltips.
-          let hypotheticalHTML = `<h2>Hypothetical Principal Financing Summary</h2>
+      // Prepare the second summary table (hypothetical principal financing) with tooltips.
+      let hypotheticalHTML = `<h2>Hypothetical Principal Financing Summary</h2>
                          <table>
                            <tbody>
                              <tr>
-                               <td title="Average BTC sold each month to finance the monthly portion of the principal.">
+                               <td title="Average BTC sold each month to finance the monthly principal portion.">
                                  Average Monthly BTC Sold for Principal Financing
                                </td>
-                               <td title="Shows the average amount of BTC that would be sold each month instead of taking a loan.">
-                                 ${averageBTCForPrincipalFinancing.toFixed(
-                                   6
-                                 )} BTC (≈${monthlyPrincipalUSDAmount.toFixed(
-            2
-          )} USD/month)
+                               <td title="The average amount of BTC that would be sold monthly instead of taking the loan.">
+                                 ${averageBTCForPrincipalFinancing.toFixed(6)} BTC (≈${monthlyPrincipalUSDAmount.toFixed(2)} USD/month)
                                </td>
                              </tr>
                              <tr>
-                               <td title="Total BTC that would be sold over the loan term to finance the entire principal.">
+                               <td title="Total BTC that would be sold over the loan term to finance the full principal.">
                                  Total BTC that would be sold for Principal Financing
                                </td>
-                               <td title="This is the sum of the hypothetical monthly BTC sales needed to raise the full loan amount.">
-                                 ${totalBTCForPrincipalFinancing.toFixed(
-                                   6
-                                 )} BTC (raising ${borrowedAmount.toFixed(
-            2
-          )} USD)
+                               <td title="The sum of the hypothetical monthly BTC sales needed to raise the full loan amount.">
+                                 ${totalBTCForPrincipalFinancing.toFixed(6)} BTC (raising ${borrowedAmount.toFixed(2)} USD)
                                </td>
                              </tr>
                              <tr>
-                               <td title="This represents the total BTC remaining if you financed the principal by selling BTC instead of taking the loan." class="highlight">
+                               <td title="Remaining BTC if the principal was financed entirely by selling BTC." class="highlight">
                                  Total BTC Remaining if Principal Financed by Sale
                                </td>
-                               <td title="Indicates the remaining BTC after deducting the hypothetical amount sold for principal financing.">
-                                 ${totalBTCRemainingIfFinancedBySale.toFixed(
-                                   6
-                                 )} BTC
+                               <td title="Remaining BTC after deducting the hypothetical BTC sold for principal financing." class="highlight">
+                                 ${totalBTCRemainingIfFinancedBySale.toFixed(6)} BTC
                                </td>
                              </tr>
                              <tr>
-                               <td title="USD value of the BTC remaining if you financed the principal by selling BTC.">
+                               <td title="USD value of the remaining BTC if the principal was financed by sale.">
                                  Value of BTC Remaining if Principal Financed by Sale (USD)
                                </td>
-                               <td title="Shows the dollar value of your remaining BTC after hypothetical sales.">
-                                 ${totalRemainingValueIfFinancedBySale.toFixed(
-                                   2
-                                 )} USD
+                               <td title="This shows the dollar value of your remaining BTC after hypothetical sales.">
+                                 ${totalRemainingValueIfFinancedBySale.toFixed(2)} USD
                                </td>
                              </tr>
                            </tbody>
                          </table>`;
 
-          // Display the combined results: Monthly Schedule on top, and the two summary tables side by side.
-          document.getElementById("results").innerHTML =
-            scheduleHTML +
-            `<div class="summary-container">
+      // Display the combined results: Monthly Schedule on top, then the two summary tables side by side.
+      document.getElementById('results').innerHTML = scheduleHTML +
+        `<div class="summary-container">
           <div class="summary-box">${summaryHTML}</div>
           <div class="summary-box">${hypotheticalHTML}</div>
         </div>`;
-        });
-    </script>
-  </body>
+    });
+  </script>
+</body>
 </html>
