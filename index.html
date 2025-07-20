@@ -2,12 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Bitcoin Cash-Flow Calculator</title>
+    <title>Bitcoin Cash‑Flow Calculator</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       :root {
         --bg: #f3f6fa;
-        --card-bg: #ffffff;
+        --card-bg: #fff;
         --accent: #f7931a;
         --text-dark: #1e1e2f;
         --text-light: #646b8c;
@@ -119,8 +119,7 @@
   </head>
   <body>
     <div class="card">
-      <h1>Bitcoin Cash-Flow Calculator</h1>
-
+      <h1>Bitcoin Cash‑Flow Calculator</h1>
       <div class="price-display" id="priceDisplay">Current BTC Price: —</div>
 
       <div class="grid">
@@ -129,12 +128,16 @@
           ><input type="number" id="btcHoldings" value="3" step="0.0001" />
         </div>
         <div>
-          <label>Annual USD Needed (Y1)</label
+          <label>Annual USD Needed (Year 1)</label
           ><input type="number" id="usdWithdraw" value="10000" />
         </div>
         <div>
           <label>USD Increase per Year (%)</label
           ><input type="number" id="usdIncrease" value="5" step="0.1" />
+        </div>
+        <div>
+          <label>Delay Start (Years)</label
+          ><input type="number" id="delayYears" value="0" min="0" />
         </div>
         <div>
           <label>Loan Interest (%)</label
@@ -148,8 +151,7 @@
           <label>LTV (%)</label><input type="number" id="ltv" value="50" />
         </div>
         <div>
-          <label>Number of Years</label
-          ><input type="number" id="years" value="5" />
+          <label>Draw Years</label><input type="number" id="years" value="5" />
         </div>
       </div>
 
@@ -164,13 +166,10 @@
     </div>
 
     <script>
-      /* Helpers */
       const $ = (id) => document.getElementById(id);
       const fmtBTC = (v) => Number(v).toFixed(4);
       const fmtUSD = (v) =>
         "$" + Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
-
-      /* Fetch live price (Coinbase) */
       let currentPrice = null;
       async function fetchBTCPrice() {
         try {
@@ -187,21 +186,22 @@
         }
       }
 
-      /* Main calc */
       function calculate() {
         const initialBTC = parseFloat($("btcHoldings").value);
         const usdStart = parseFloat($("usdWithdraw").value);
         const usdInc = parseFloat($("usdIncrease").value) / 100;
+        const delay = parseInt($("delayYears").value, 10);
         const interest = parseFloat($("interestRate").value) / 100;
         const growth = parseFloat($("growthRate").value) / 100;
         const ltv = parseFloat($("ltv").value) / 100;
-        const years = parseInt($("years").value, 10);
+        const drawYears = parseInt($("years").value, 10);
         if (
           !initialBTC ||
           !usdStart ||
           isNaN(usdInc) ||
+          isNaN(delay) ||
           !growth ||
-          !years ||
+          !drawYears ||
           currentPrice === null ||
           !ltv
         ) {
@@ -209,20 +209,19 @@
           return;
         }
 
-        let btcSaleRemain = initialBTC,
-          btcLoanRemain = initialBTC;
+        let btcPriceAtStart = currentPrice * Math.pow(1 + growth, delay);
+        let btcSaleRemain = initialBTC;
+        let btcLoanRemain = initialBTC;
         let saleRows = "",
-          loanRows = "",
-          finalPriceEnd = currentPrice;
+          loanRows = "";
+        let finalPriceEnd = btcPriceAtStart;
 
-        for (let y = 1; y <= years; y++) {
-          const priceStart = currentPrice * Math.pow(1 + growth, y - 1);
+        for (let y = 1; y <= drawYears; y++) {
+          const priceStart = btcPriceAtStart * Math.pow(1 + growth, y - 1);
           const priceEnd = priceStart * (1 + growth);
           finalPriceEnd = priceEnd;
+          const cashUSD = Math.round(usdStart * Math.pow(1 + usdInc, y - 1));
 
-          const cashUSD = usdStart * Math.pow(1 + usdInc, y - 1);
-
-          /* Sale path */
           const btcSoldSale = cashUSD / priceStart;
           btcSaleRemain -= btcSoldSale;
           saleRows += `<tr><td>${y}</td><td>${fmtUSD(
@@ -234,9 +233,8 @@
             100
           ).toFixed(2)}%</td></tr>`;
 
-          /* Loan path */
           const collateralBTC = cashUSD / ltv / priceStart;
-          const usdRepay = cashUSD * (1 + interest);
+          const usdRepay = Math.round(cashUSD * (1 + interest));
           const btcSoldLoan = usdRepay / priceEnd;
           btcLoanRemain -= btcSoldLoan;
           loanRows += `<tr><td>${y}</td><td>${fmtUSD(
@@ -251,12 +249,25 @@
           ).toFixed(2)}%</td></tr>`;
         }
 
-        const saleValUSD = btcSaleRemain * finalPriceEnd;
-        const loanValUSD = btcLoanRemain * finalPriceEnd;
+        const saleValUSD = Math.round(btcSaleRemain * finalPriceEnd);
+        const loanValUSD = Math.round(btcLoanRemain * finalPriceEnd);
         const diffBTC = btcLoanRemain - btcSaleRemain;
         const diffUSD = loanValUSD - saleValUSD;
 
+        const summaryRows = `<tr><td>Sale</td><td>${fmtBTC(
+          btcSaleRemain
+        )}</td><td>${fmtUSD(saleValUSD)}</td><td>—</td><td>—</td></tr>
+        <tr><td>Loan</td><td>${fmtBTC(btcLoanRemain)}</td><td>${fmtUSD(
+          loanValUSD
+        )}</td><td>—</td><td>—</td></tr>
+        <tr><td><strong>Difference (Loan – Sale)</strong></td><td></td><td></td><td><strong>${fmtBTC(
+          diffBTC
+        )}</strong></td><td><strong>${fmtUSD(diffUSD)}</strong></td></tr>`;
+
         $("resultArea").innerHTML = `
+          <h3>Parameters</h3>
+          <p>Delay before cash flows: <strong>${delay}</strong> year(s)</p>
+
           <h3>Sale Strategy</h3>
           <table><thead><tr><th>Year</th><th>BTC Price Start</th><th>Cash (USD)</th><th>BTC Sold</th><th>BTC Left</th><th>% of Start</th></tr></thead><tbody>${saleRows}</tbody><tfoot><tr><td colspan='4'>Final BTC</td><td>${fmtBTC(
           btcSaleRemain
@@ -264,31 +275,20 @@
           2
         )}%</td></tr></tfoot></table>
 
-          <h3 style="margin-top:2rem;">Loan Strategy</h3>
+          <h3 style='margin-top:2rem;'>Loan Strategy</h3>
           <table><thead><tr><th>Year</th><th>BTC Price Start</th><th>Cash (USD)</th><th>Repay (USD)</th><th>Collateral (BTC)</th><th>BTC Sold @ End</th><th>BTC After Repay</th><th>% of Start</th></tr></thead><tbody>${loanRows}</tbody><tfoot><tr><td colspan='6'>Final BTC After Repay</td><td>${fmtBTC(
           btcLoanRemain
         )}</td><td>${((btcLoanRemain / initialBTC) * 100).toFixed(
           2
         )}%</td></tr></tfoot></table>
 
-          <h3 style="margin-top:2rem;">Summary (End of Period)</h3>
+          <h3 style='margin-top:2rem;'>Summary (End of Period)</h3>
           <table>
-            <thead><tr><th>Scenario</th><th>BTC Remaining</th><th>Value (USD)</th></tr></thead>
-            <tbody>
-              <tr><td>Sale</td><td>${fmtBTC(btcSaleRemain)}</td><td>${fmtUSD(
-          saleValUSD
-        )}</td></tr>
-              <tr><td>Loan</td><td>${fmtBTC(btcLoanRemain)}</td><td>${fmtUSD(
-          loanValUSD
-        )}</td></tr>
-              <tr><td><strong>Difference (Loan-Sale)</strong></td><td><strong>${fmtBTC(
-                diffBTC
-              )}</strong></td><td><strong>${fmtUSD(diffUSD)}</strong></td></tr>
-            </tbody>
+            <thead><tr><th>Scenario</th><th>BTC Remaining</th><th>Value (USD)</th><th>Δ BTC</th><th>Δ USD</th></tr></thead>
+            <tbody>${summaryRows}</tbody>
           </table>`;
       }
 
-      /* Listeners */
       document.addEventListener("DOMContentLoaded", fetchBTCPrice);
       $("updatePrice").addEventListener("click", fetchBTCPrice);
       $("calculateBtn").addEventListener("click", calculate);
