@@ -2,12 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Bitcoin Cash‑Flow Calculator</title>
+    <title>Bitcoin Cash-Flow Calculator</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       :root {
         --bg: #f3f6fa;
-        --card-bg: #fff;
+        --card-bg: #ffffff;
         --accent: #f7931a;
         --text-dark: #1e1e2f;
         --text-light: #646b8c;
@@ -119,16 +119,22 @@
   </head>
   <body>
     <div class="card">
-      <h1>Bitcoin Cash‑Flow Calculator</h1>
+      <h1>Bitcoin Cash-Flow Calculator</h1>
+
       <div class="price-display" id="priceDisplay">Current BTC Price: —</div>
+
       <div class="grid">
         <div>
           <label>BTC Holdings</label
           ><input type="number" id="btcHoldings" value="3" step="0.0001" />
         </div>
         <div>
-          <label>Annual USD Needed</label
+          <label>Annual USD Needed (Y1)</label
           ><input type="number" id="usdWithdraw" value="10000" />
+        </div>
+        <div>
+          <label>USD Increase per Year (%)</label
+          ><input type="number" id="usdIncrease" value="5" step="0.1" />
         </div>
         <div>
           <label>Loan Interest (%)</label
@@ -146,52 +152,54 @@
           ><input type="number" id="years" value="5" />
         </div>
       </div>
+
       <div
         style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap"
       >
-        <button class="btn-outline" id="updatePrice">Update BTC Price</button
-        ><button class="btn-primary" id="calculateBtn">Calculate</button>
+        <button class="btn-outline" id="updatePrice">Update BTC Price</button>
+        <button class="btn-primary" id="calculateBtn">Calculate</button>
       </div>
+
       <div id="resultArea"></div>
     </div>
+
     <script>
-      const priceDisplay = document.getElementById("priceDisplay");
-      const updateBtn = document.getElementById("updatePrice");
-      const calcBtn = document.getElementById("calculateBtn");
-      const resultArea = document.getElementById("resultArea");
+      /* Helpers */
+      const $ = (id) => document.getElementById(id);
+      const fmtBTC = (v) => Number(v).toFixed(4);
+      const fmtUSD = (v) =>
+        "$" + Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+      /* Fetch live price (Coinbase) */
       let currentPrice = null;
       async function fetchBTCPrice() {
         try {
           const r = await fetch(
-            "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
+            "https://api.coinbase.com/v2/prices/BTC-USD/spot"
           );
           const d = await r.json();
-          currentPrice = d.bitcoin.usd;
-          priceDisplay.textContent = `Current BTC Price: $${currentPrice.toLocaleString()}`;
+          currentPrice = parseFloat(d.data.amount);
+          $("priceDisplay").textContent = `Current BTC Price: ${fmtUSD(
+            currentPrice
+          )}`;
         } catch {
-          priceDisplay.textContent = "Error fetching price.";
+          $("priceDisplay").textContent = "Error fetching price.";
         }
       }
-      const fmtBTC = (v) => Number(v).toFixed(4),
-        fmtUSD = (v) =>
-          "$" +
-          Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+      /* Main calc */
       function calculate() {
-        const initialBTC = parseFloat(
-          document.getElementById("btcHoldings").value
-        );
-        const usdNeed = parseFloat(
-          document.getElementById("usdWithdraw").value
-        );
-        const interest =
-          parseFloat(document.getElementById("interestRate").value) / 100;
-        const growth =
-          parseFloat(document.getElementById("growthRate").value) / 100;
-        const ltv = parseFloat(document.getElementById("ltv").value) / 100;
-        const years = parseInt(document.getElementById("years").value, 10);
+        const initialBTC = parseFloat($("btcHoldings").value);
+        const usdStart = parseFloat($("usdWithdraw").value);
+        const usdInc = parseFloat($("usdIncrease").value) / 100;
+        const interest = parseFloat($("interestRate").value) / 100;
+        const growth = parseFloat($("growthRate").value) / 100;
+        const ltv = parseFloat($("ltv").value) / 100;
+        const years = parseInt($("years").value, 10);
         if (
           !initialBTC ||
-          !usdNeed ||
+          !usdStart ||
+          isNaN(usdInc) ||
           !growth ||
           !years ||
           currentPrice === null ||
@@ -200,56 +208,90 @@
           alert("Fill all fields & fetch price");
           return;
         }
-        let btcSaleRemain = initialBTC;
-        let btcLoanTotal = initialBTC;
-        let saleRows = "",
-          loanRows = "";
-        for (let y = 1; y <= years; y++) {
-          const priceStart = currentPrice * Math.pow(1 + growth, y - 1); // BTC price at loan origination / sale
-          const priceEnd = priceStart * (1 + growth); // price after one year (repayment moment)
 
-          /* ---------------- SALE STRATEGY ---------------- */
-          const btcSoldSale = usdNeed / priceStart;
+        let btcSaleRemain = initialBTC,
+          btcLoanRemain = initialBTC;
+        let saleRows = "",
+          loanRows = "",
+          finalPriceEnd = currentPrice;
+
+        for (let y = 1; y <= years; y++) {
+          const priceStart = currentPrice * Math.pow(1 + growth, y - 1);
+          const priceEnd = priceStart * (1 + growth);
+          finalPriceEnd = priceEnd;
+
+          const cashUSD = usdStart * Math.pow(1 + usdInc, y - 1);
+
+          /* Sale path */
+          const btcSoldSale = cashUSD / priceStart;
           btcSaleRemain -= btcSoldSale;
           saleRows += `<tr><td>${y}</td><td>${fmtUSD(
             priceStart
-          )}</td><td>${fmtUSD(usdNeed)}</td><td>${fmtBTC(
+          )}</td><td>${fmtUSD(cashUSD)}</td><td>${fmtBTC(
             btcSoldSale
           )}</td><td>${fmtBTC(btcSaleRemain)}</td><td>${(
             (btcSaleRemain / initialBTC) *
             100
           ).toFixed(2)}%</td></tr>`;
 
-          /* ---------------- LOAN STRATEGY ---------------- */
-          const collateralBTC = usdNeed / ltv / priceStart; // posted at start
-          const usdRepay = usdNeed * (1 + interest);
-          const btcSoldLoan = usdRepay / priceEnd; // BTC sold at end‑of‑year higher price
-          btcLoanTotal -= btcSoldLoan; // collateral returns, so only sold BTC leaves stack
-
+          /* Loan path */
+          const collateralBTC = cashUSD / ltv / priceStart;
+          const usdRepay = cashUSD * (1 + interest);
+          const btcSoldLoan = usdRepay / priceEnd;
+          btcLoanRemain -= btcSoldLoan;
           loanRows += `<tr><td>${y}</td><td>${fmtUSD(
             priceStart
-          )}</td><td>${fmtUSD(usdNeed)}</td><td>${fmtUSD(
+          )}</td><td>${fmtUSD(cashUSD)}</td><td>${fmtUSD(
             usdRepay
           )}</td><td>${fmtBTC(collateralBTC)}</td><td>${fmtBTC(
             btcSoldLoan
-          )}</td><td>${fmtBTC(btcLoanTotal)}</td><td>${(
-            (btcLoanTotal / initialBTC) *
+          )}</td><td>${fmtBTC(btcLoanRemain)}</td><td>${(
+            (btcLoanRemain / initialBTC) *
             100
           ).toFixed(2)}%</td></tr>`;
         }
-        resultArea.innerHTML = `<h3>Sale Strategy</h3><table><thead><tr><th>Year</th><th>BTC Price Start</th><th>Cash (USD)</th><th>BTC Sold</th><th>BTC Left</th><th>% of Start</th></tr></thead><tbody>${saleRows}</tbody><tfoot><tr><td colspan='4'>Final BTC</td><td>${fmtBTC(
+
+        const saleValUSD = btcSaleRemain * finalPriceEnd;
+        const loanValUSD = btcLoanRemain * finalPriceEnd;
+        const diffBTC = btcLoanRemain - btcSaleRemain;
+        const diffUSD = loanValUSD - saleValUSD;
+
+        $("resultArea").innerHTML = `
+          <h3>Sale Strategy</h3>
+          <table><thead><tr><th>Year</th><th>BTC Price Start</th><th>Cash (USD)</th><th>BTC Sold</th><th>BTC Left</th><th>% of Start</th></tr></thead><tbody>${saleRows}</tbody><tfoot><tr><td colspan='4'>Final BTC</td><td>${fmtBTC(
           btcSaleRemain
         )}</td><td>${((btcSaleRemain / initialBTC) * 100).toFixed(
           2
-        )}%</td></tr></tfoot></table><h3 style='margin-top:2rem;'>Loan Strategy</h3><table><thead><tr><th>Year</th><th>BTC Price Start</th><th>Cash (USD)</th><th>Repay (USD)</th><th>Collateral (BTC)</th><th>BTC Sold @ End</th><th>BTC After Repay</th><th>% of Start</th></tr></thead><tbody>${loanRows}</tbody><tfoot><tr><td colspan='6'>Final BTC After Repay</td><td>${fmtBTC(
-          btcLoanTotal
-        )}</td><td>${((btcLoanTotal / initialBTC) * 100).toFixed(
+        )}%</td></tr></tfoot></table>
+
+          <h3 style="margin-top:2rem;">Loan Strategy</h3>
+          <table><thead><tr><th>Year</th><th>BTC Price Start</th><th>Cash (USD)</th><th>Repay (USD)</th><th>Collateral (BTC)</th><th>BTC Sold @ End</th><th>BTC After Repay</th><th>% of Start</th></tr></thead><tbody>${loanRows}</tbody><tfoot><tr><td colspan='6'>Final BTC After Repay</td><td>${fmtBTC(
+          btcLoanRemain
+        )}</td><td>${((btcLoanRemain / initialBTC) * 100).toFixed(
           2
-        )}%</td></tr></tfoot></table>`;
+        )}%</td></tr></tfoot></table>
+
+          <h3 style="margin-top:2rem;">Summary (End of Period)</h3>
+          <table>
+            <thead><tr><th>Scenario</th><th>BTC Remaining</th><th>Value (USD)</th></tr></thead>
+            <tbody>
+              <tr><td>Sale</td><td>${fmtBTC(btcSaleRemain)}</td><td>${fmtUSD(
+          saleValUSD
+        )}</td></tr>
+              <tr><td>Loan</td><td>${fmtBTC(btcLoanRemain)}</td><td>${fmtUSD(
+          loanValUSD
+        )}</td></tr>
+              <tr><td><strong>Difference (Loan-Sale)</strong></td><td><strong>${fmtBTC(
+                diffBTC
+              )}</strong></td><td><strong>${fmtUSD(diffUSD)}</strong></td></tr>
+            </tbody>
+          </table>`;
       }
+
+      /* Listeners */
       document.addEventListener("DOMContentLoaded", fetchBTCPrice);
-      updateBtn.addEventListener("click", fetchBTCPrice);
-      calcBtn.addEventListener("click", calculate);
+      $("updatePrice").addEventListener("click", fetchBTCPrice);
+      $("calculateBtn").addEventListener("click", calculate);
     </script>
   </body>
 </html>
